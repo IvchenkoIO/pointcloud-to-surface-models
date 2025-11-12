@@ -85,7 +85,7 @@ def main():
     # --- visualize with auto-fit and bigger points ---
     vis = visualization.Visualizer()
     vis.create_window(window_name="Sparse (red) vs Dense (blue)")
-    vis.add_geometry(sparse)
+    #vis.add_geometry(sparse)
     vis.add_geometry(dense)
 
     opt = vis.get_render_option()

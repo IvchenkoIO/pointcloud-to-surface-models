@@ -9,9 +9,7 @@ from scipy.spatial import Voronoi
 from numpy.linalg import norm
 
 def data_preparation(filename):
-    print("-----------------")
-    print("DATA PREPARATION")
-    print("-----------------")
+    ##just data preparation
     plydata = PlyData.read(filename)
     vertex = plydata['vertex']
     sparse_points = np.vstack([vertex['x'], vertex['y'], vertex['z']]).T
@@ -20,13 +18,12 @@ def data_preparation(filename):
     return sparse_points
 
 def kd_trees(sparse_points):
-    #print("-----------------")
-    #print("Building KDTrees")
-    #print("-----------------")
+    #building a KD-tree over the points for fast k-NN / radius queries during upsampling
     kdtree = KDTree(sparse_points)
     return kdtree
 
 def plane_fitting(kd_tree,sparse_points,point_idx,k_neighbors):
+    #estimate a local tangent plane via weighted PCA on the point’s k-NN; returns (u,v) basis, neighbors, and weighted centroid
     distances, neighbor_indices = kd_tree.query(sparse_points[point_idx], k=k_neighbors)
     neighbors = sparse_points[neighbor_indices]
 
@@ -55,9 +52,7 @@ def plane_fitting(kd_tree,sparse_points,point_idx,k_neighbors):
     return u, v, neighbors, center
 
 def projection_3d_to_2d(u,v,neighbors, center):
-    #print("-----------------")
-    #print("3D to 2D projection")
-    #print("-----------------")
+    #project 3D neighbor points into the local (u,v) tangent plane coordinates centered at the local centroid
     centered = neighbors - center
     # Project onto basis vectors
     x_2d = np.dot(centered, u)  # Coordinate along u direction
@@ -68,13 +63,12 @@ def projection_3d_to_2d(u,v,neighbors, center):
     return points_2d
 
 def projection_2d_to_3d(point_2d, center, u, v):
-    #print("\n-----------------")
-    #print("PROJECTING BACK TO 3D")
-    #print("-----------------")
+    #project a 2D point in the local frame back to 3D by combining u and v with the plane’s origin (center)
     point_3d = center + point_2d[0] * u + point_2d[1] * v
     return point_3d
 
 def build_voronoi_diagram(points_2d):
+    #Construct a 2D Voronoi diagram from projected neighbors; assumes ≥3 non-collinear points
     #print("\n-----------------")
     #print("VORONOI DIAGRAM")
     #print("-----------------")
@@ -87,6 +81,7 @@ def build_voronoi_diagram(points_2d):
     return vor
 
 def finding_largest_gap(points_2d, vor):
+    #Pick the Voronoi vertex with the largest nearest-sample distance (largest empty circle) and return (point, radius)
     ##1st approach to rmax
     #radii = norm(points_2d, axis=1)
     #r = np.linalg.norm(points_2d, axis=1)
@@ -118,10 +113,10 @@ def finding_largest_gap(points_2d, vor):
     return best_vertex_2d, float(max_radius)
 
 def save_ply(filename, points, ascii=True):
-    """Save points to PLY file"""
+    #save back as .ply
     pts = np.asarray(points, dtype=np.float32).reshape(-1, 3)
 
-    # build structured array
+    #build structured array
     vertex = np.empty(pts.shape[0],
                       dtype=[('x', 'f4'), ('y', 'f4'), ('z', 'f4')])
     vertex['x'] = pts[:, 0]
@@ -130,6 +125,6 @@ def save_ply(filename, points, ascii=True):
 
     el = PlyElement.describe(vertex, 'vertex')
 
-    # choose ASCII vs binary here
+    #choose ASCII
     ply = PlyData([el], text=ascii)
     ply.write(filename)
