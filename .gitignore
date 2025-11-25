@@ -2,3 +2,5 @@
 *.pyproj
 *.slnx
 models
+*.ply
+__pycache__

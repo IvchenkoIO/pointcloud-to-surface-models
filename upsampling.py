@@ -92,12 +92,12 @@ def upsampling_self(filename,num_iterations=10000, k_neighbors=20, print_every=1
             kdtree = up_h.kd_trees(sparse_points=dense_points)
 
         if (iteration + 1) % print_every == 0:
-            print(f"✓ Iter {iteration + 1:4d}/{num_iterations}: "
+            print(f"Iter {iteration + 1:4d}/{num_iterations}: "
                   f"{len(dense_points)} points (+{successful_adds}), gap={max_radius:.6f}")
 
     print(f"{'-' * 60}")
-    print(f"✅ COMPLETE!")
-    print(f"   Final: {len(dense_points)} points")
-    print(f"   Added: {successful_adds} new points")
+    print(f"COMPLETE!")
+    print(f"Final: {len(dense_points)} points")
+    print(f"Added: {successful_adds} new points")
     print(f"{'=' * 60}\n")
     up_h.save_ply("dense_output.ply", dense_points)

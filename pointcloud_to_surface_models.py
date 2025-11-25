@@ -1,7 +1,10 @@
 from open3d import io, geometry, visualization
 import numpy as np
+import threading
 from pathlib import Path
 import upsampling as up
+import upsampling_helper_funcs as up_h
+from comparison import evaluate
 
 
 
@@ -23,11 +26,11 @@ dragon_smaller = Path("models/dragon/dragon_vrip_res3.ply")
 dragon_smallest = Path("models/dragon/dragon_vrip_res4.ply") # maybe remove like 50% to add some randomness
 
 lucy = "models/lucy/lucy.ply" # It's extremely large, remove like 99.9% points
+
 output_path = Path("output/")
 extension = ".ply"
 
-def load_and_reduce_point_cloud(filename: str, percentage: float):
-    cloud = io.read_point_cloud(filename)
+def load_and_reduce_point_cloud(cloud, percentage):
     num_points = len(cloud.points)
 
     keep_ratio = 1 - (percentage / 100)
@@ -57,18 +60,28 @@ def stats(name, pcd):
     return aabb
 
 
-
-
 def main():
-    filename = bunny_smallest
-    percentage_to_remove = 0
-    reduced_cloud = load_and_reduce_point_cloud(str(filename), percentage_to_remove)
+    filename = bunny_full
+    full_cloud = io.read_point_cloud(filename)
+    percentage_to_remove = 90
+    sparse = load_and_reduce_point_cloud(full_cloud, percentage_to_remove)
+    io.write_point_cloud("sparse_output.ply", sparse)
+
+    # Fill till same size
+    #points_to_add = len(full_cloud.points) - len(sparse.points)
+    # Upscale by (X + 1)
+    points_to_add = len(sparse.points) * 9
+    # Add X points
+    #points_to_add = 10000
+
     #print(f"Sparse: {len(reduced_cloud.points)} points")
     #up.upsampling_alg(reduced_cloud,str(output_path),str(filename.stem),extension)
     #visualize_point_cloud(reduced_cloud)
-    up.upsampling_self(filename=str(filename))
-    sparse = io.read_point_cloud(filename)
+    up.upsampling_self(filename=str("sparse_output.ply"), num_iterations=points_to_add)
     dense = io.read_point_cloud("dense_output.ply")
+    
+    # Compare result to ground truth
+    evaluate(full_cloud, dense)
 
     # color for contrast
     sparse.paint_uniform_color([1.0, 0.3, 0.1])  # red
@@ -77,15 +90,23 @@ def main():
     aabb_s = stats("sparse", sparse)
     aabb_d = stats("dense", dense)
 
-    # merge AABBs (no '+' operator for AABBs)
-    mins = np.minimum(aabb_s.get_min_bound(), aabb_d.get_min_bound())
-    maxs = np.maximum(aabb_s.get_max_bound(), aabb_d.get_max_bound())
+    # Spacing
+    extent_s = aabb_s.get_extent()
+    extent_d = aabb_d.get_extent()
+    shift = max(extent_s[0], extent_d[0]) * 1.2  # shift along X
+
+    # Translate dense cloud to the right
+    dense.translate([shift, 0, 0])
+
+    # Combined AABB for view centering
+    mins = np.minimum(aabb_s.get_min_bound(), aabb_d.get_min_bound() + [shift, 0, 0])
+    maxs = np.maximum(aabb_s.get_max_bound(), aabb_d.get_max_bound() + [shift, 0, 0])
     combo = geometry.AxisAlignedBoundingBox(mins, maxs)
 
-    # --- visualize with auto-fit and bigger points ---
+    # --- Visualization ---
     vis = visualization.Visualizer()
-    vis.create_window(window_name="Sparse (red) vs Dense (blue)")
-    #vis.add_geometry(sparse)
+    vis.create_window(window_name="Sparse (Red, Left) vs Dense (Blue, Right)")
+    vis.add_geometry(sparse)
     vis.add_geometry(dense)
 
     opt = vis.get_render_option()
@@ -96,16 +117,15 @@ def main():
     vc.set_lookat(combo.get_center())
     vc.set_front([0.0, 0.0, -1.0])
     vc.set_up([0.0, -1.0, 0.0])
-    vc.set_zoom(0.7)  # try 0.3..1.0
+    vc.set_zoom(0.7)
 
-    # optional: axis frame at the combined center
     axes = geometry.TriangleMesh.create_coordinate_frame(
         size=max(combo.get_extent()) * 0.1, origin=combo.get_center()
     )
     vis.add_geometry(axes)
 
-    # TIP: press 'R' in the viewer to auto-fit all geometry
     vis.run()
     vis.destroy_window()
+
 if __name__ == "__main__":
     main()
