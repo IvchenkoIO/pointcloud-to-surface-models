@@ -61,7 +61,7 @@ def stats(name, pcd):
 
 
 def main():
-    filename = bunny_full
+    filename = dragon_full
     full_cloud = io.read_point_cloud(filename)
     percentage_to_remove = 90
     sparse = load_and_reduce_point_cloud(full_cloud, percentage_to_remove)

@@ -77,8 +77,24 @@ def upsampling_self(filename,num_iterations=10000, k_neighbors=20, print_every=1
 
         if max_radius < 1e-9:
             continue
-            # Project the best Voronoi vertex back to 3D
+
         new_point_3d = up_h.projection_2d_to_3d(best_vertex_2d, center, u, v)
+
+        #local "jump" check to avoid bridging separate parts (bunny ears)
+        base_point = dense_points[point_idx]
+
+        #estimate local scale around the base point
+        k_local = min(k_neighbors, len(dense_points))
+        local_dists, _ = kdtree.query(base_point, k=k_local)
+        #ignore the 0 distance to itself
+        local_scale = np.median(local_dists[1:]) if k_local > 1 else local_dists[0]
+
+        #distance from the base point to the new point
+        jump_dist = np.linalg.norm(new_point_3d - base_point)
+
+        #if the new point is far from the local neighborhood, skip
+        if jump_dist > 2.0 * local_scale:
+            continue
 
         nn_dist, _ = kdtree.query(new_point_3d, k=1)
         if nn_dist < 0.25 * max_radius:
@@ -99,5 +115,8 @@ def upsampling_self(filename,num_iterations=10000, k_neighbors=20, print_every=1
     print(f"COMPLETE!")
     print(f"Final: {len(dense_points)} points")
     print(f"Added: {successful_adds} new points")
+    print(f"{'=' * 60}\n")
+    dense_points = up_h.remove_sparse_outliers(dense_points, k=20, factor=2.5)
+    print(f"After density filtering: {len(dense_points)} points")
     print(f"{'=' * 60}\n")
     up_h.save_ply("dense_output.ply", dense_points)

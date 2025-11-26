@@ -128,3 +128,25 @@ def save_ply(filename, points, ascii=True):
     #choose ASCII
     ply = PlyData([el], text=ascii)
     ply.write(filename)
+
+
+def remove_sparse_outliers(points, k=20, factor=2.5):
+    ##compute the distance to nearest neighbous and if bigger than value delete
+    pts = np.asarray(points)
+    if len(pts) <= k + 1:
+        return pts  # nothing to do
+
+    tree = KDTree(pts)
+    # k+1 because the first neighbor is the point itself (distance 0)
+    dists, _ = tree.query(pts, k=k+1)
+    mean_dists = dists[:, 1:].mean(axis=1) #skip self distance
+
+    global_med = np.median(mean_dists)
+    threshold = factor * global_med
+
+    keep_mask = mean_dists <= threshold
+    kept = keep_mask.sum()
+    removed = len(pts) - kept
+    print(f"Density filter: kept {kept}, removed {removed} sparse outliers")
+
+    return pts[keep_mask]
