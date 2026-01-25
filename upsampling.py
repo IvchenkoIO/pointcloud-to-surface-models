@@ -43,7 +43,7 @@ def upsampling_alg(sparse_point_cloud,output_path,filename,extension):
 
 
 
-def upsampling_self(filename,num_iterations=10000, k_neighbors=20, print_every=100):
+def upsampling_self(model_name, filename,num_iterations=10000, k_neighbors=20, print_every=100):
     #num_iterations = 1000
     #k_neighbors = 20
     #print_every = 100
@@ -119,4 +119,4 @@ def upsampling_self(filename,num_iterations=10000, k_neighbors=20, print_every=1
     dense_points = up_h.remove_sparse_outliers(dense_points, k=20, factor=2.5)
     print(f"After density filtering: {len(dense_points)} points")
     print(f"{'=' * 60}\n")
-    up_h.save_ply("dense_output.ply", dense_points)
+    up_h.save_ply(f"output/{model_name}/dense_output.ply", dense_points)

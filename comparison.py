@@ -33,11 +33,17 @@ def hausdorff_distance(A, B):
     distB, _ = treeB.query(A)
     return max(np.max(distA), np.max(distB))
 
-def evaluate(ground_truth, reconstructed):
+def evaluate(ground_truth, reconstructed, model_name):
     cd = chamfer_distance(ground_truth.points, reconstructed.points)
     cd_norm = normalized_chamfer(ground_truth.points, cd)
     hd = hausdorff_distance(ground_truth.points, reconstructed.points)
-    print("Chamfer Distance:", cd)
-    print("Normalized Chamfer Distance: 0 - exact match. 1 and more - bad match.")
-    print("Normalized Chamfer Distance:", cd_norm)
-    print("Hausdorff Distance:", hd)
+
+    text = (
+        f"Chamfer Distance: {cd}\n"
+        "Normalized Chamfer Distance: 0 - exact match. 1 and more - bad match.\n"
+        f"Normalized Chamfer Distance: {cd_norm}\n"
+        f"Hausdorff Distance: {hd}\n"
+    )
+    
+    with open(f"output/{model_name}/comparison.txt", "w") as f:
+        f.write(text)

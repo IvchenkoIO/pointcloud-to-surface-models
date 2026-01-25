@@ -2,6 +2,7 @@ from open3d import io, geometry, visualization
 import numpy as np
 import threading
 from pathlib import Path
+import os
 import upsampling as up
 import upsampling_helper_funcs as up_h
 from comparison import evaluate
@@ -60,29 +61,30 @@ def stats(name, pcd):
     return aabb
 
 
-def main():
-    filename = dragon_full
+def process_model(filename, model_name, percentage_to_remove, upscale):
     full_cloud = io.read_point_cloud(filename)
-    percentage_to_remove = 90
     sparse = load_and_reduce_point_cloud(full_cloud, percentage_to_remove)
-    io.write_point_cloud("sparse_output.ply", sparse)
+
+    os.makedirs(f"output/{model_name}", exist_ok=True)
+    io.write_point_cloud(f"output/{model_name}/sparse_output.ply", sparse)
 
     # Fill till same size
     #points_to_add = len(full_cloud.points) - len(sparse.points)
     # Upscale by (X + 1)
-    points_to_add = len(sparse.points) * 9
+    points_to_add = int(len(sparse.points) * (upscale - 1))
     # Add X points
     #points_to_add = 10000
 
     #print(f"Sparse: {len(reduced_cloud.points)} points")
     #up.upsampling_alg(reduced_cloud,str(output_path),str(filename.stem),extension)
     #visualize_point_cloud(reduced_cloud)
-    up.upsampling_self(filename=str("sparse_output.ply"), num_iterations=points_to_add)
-    dense = io.read_point_cloud("dense_output.ply")
+    up.upsampling_self(model_name, filename=str(f"output/{model_name}/sparse_output.ply"), num_iterations=points_to_add)
+    dense = io.read_point_cloud(f"output/{model_name}/dense_output.ply")
     
     # Compare result to ground truth
-    evaluate(full_cloud, dense)
+    evaluate(full_cloud, dense, model_name)
 
+    '''
     # color for contrast
     sparse.paint_uniform_color([1.0, 0.3, 0.1])  # red
     dense.paint_uniform_color([0.1, 0.6, 1.0])  # blue
@@ -126,6 +128,17 @@ def main():
 
     vis.run()
     vis.destroy_window()
+    '''
+
+
+def diff_num_points():
+    process_model(Path("models/processed_ModelNet40/Armadillo.ply"), "Armadillo95", 95, 2)
+    process_model(Path("models/processed_ModelNet40/Armadillo.ply"), "Armadillo99", 99, 10)
+    process_model(Path("models/processed_ModelNet40/Armadillo.ply"), "Armadillo99.5", 99.5, 20)
+    process_model(Path("models/processed_ModelNet40/Armadillo.ply"), "Armadillo99.9", 99.9, 50)
+    process_model(Path("models/processed_ModelNet40/Armadillo.ply"), "Armadillo99.99", 99.98, 50)
+
 
 if __name__ == "__main__":
-    main()
+    diff_num_points()
+    #process_model(dragon_full, "dragon", 99, 10)
