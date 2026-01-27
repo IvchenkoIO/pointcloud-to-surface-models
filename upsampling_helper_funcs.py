@@ -1,3 +1,5 @@
+##imports
+
 import open3d as o3d
 import numpy as np
 from pathlib import Path
@@ -9,7 +11,10 @@ from scipy.spatial import Voronoi
 from numpy.linalg import norm
 
 def data_preparation(filename):
-    ##just data preparation
+    #load a PLY point cloud and return its vertex coordinates as an (N, 3) NumPy array
+    #also prints basic stats
+
+    #just data preparation
     plydata = PlyData.read(filename)
     vertex = plydata['vertex']
     sparse_points = np.vstack([vertex['x'], vertex['y'], vertex['z']]).T
@@ -23,43 +28,36 @@ def kd_trees(sparse_points):
     return kdtree
 
 def plane_fitting(kd_tree,sparse_points,point_idx,k_neighbors):
-    #estimate a local tangent plane via weighted PCA on the point’s k-NN; returns (u,v) basis, neighbors, and weighted centroid
+    #estimate a local tangent plane via weighted PCA on the point’s k-NN.
+    #returns (u,v) basis, neighbors, and weighted centroid
     distances, neighbor_indices = kd_tree.query(sparse_points[point_idx], k=k_neighbors)
     neighbors = sparse_points[neighbor_indices]
-
-    # weighted center (MLS-ish, simple Gaussian weight)
+    #weighted center (MLS-ish, simple gaussian weight)
     sigma = max(np.median(distances), 1e-12)
     w = np.exp(-(distances ** 2) / (2 * sigma ** 2))
     w /= (w.sum() + 1e-12)
     center = (neighbors * w[:, None]).sum(axis=0)
-
     centered = neighbors - center
     C = (centered * w[:, None]).T @ centered  # weighted covariance
     evals, evecs = np.linalg.eigh(C)
-
-    # sort largest -> smallest
+    #sort largest -> smallest
     order = np.argsort(evals)[::-1]
     evecs = evecs[:, order]
-
     u = evecs[:, 0];
     v = evecs[:, 1]
-
-    # defensive orthonormalization
+    #defensive orthonormalization
     u = u / (norm(u) + 1e-12)
     v = v - u * (u @ v)
     v = v / (norm(v) + 1e-12)
-
     return u, v, neighbors, center
 
 def projection_3d_to_2d(u,v,neighbors, center):
     #project 3D neighbor points into the local (u,v) tangent plane coordinates centered at the local centroid
     centered = neighbors - center
-    # Project onto basis vectors
-    x_2d = np.dot(centered, u)  # Coordinate along u direction
-    y_2d = np.dot(centered, v)  # Coordinate along v direction
+    #project onto basis vectors
+    x_2d = np.dot(centered, u)  #coordinate along u direction
+    y_2d = np.dot(centered, v)  #coordinate along v direction
     points_2d = np.column_stack([x_2d, y_2d])
-    #print(f"2D projected points shape: {points_2d.shape}")
-    #print(f"First few 2D points:\n{points_2d[:3]}")
     return points_2d
 
 def projection_2d_to_3d(point_2d, center, u, v):
@@ -68,21 +66,15 @@ def projection_2d_to_3d(point_2d, center, u, v):
     return point_3d
 
 def build_voronoi_diagram(points_2d):
-    #Construct a 2D Voronoi diagram from projected neighbors; assumes ≥3 non-collinear points
-    #print("\n-----------------")
-    #print("VORONOI DIAGRAM")
-    #print("-----------------")
-
-    # Compute Voronoi diagram in 2D
+    #construct a 2D Voronoi diagram from projected neighbors; assumes ≥3 non-collinear points
+    #compute Voronoi diagram in 2D
     vor = Voronoi(points_2d)
-
-    #print(f"Number of Voronoi vertices: {len(vor.vertices)}")
-    #print(f"Number of Voronoi regions: {len(vor.regions)}")
     return vor
 
 def finding_largest_gap(points_2d, vor):
-    #Pick the Voronoi vertex with the largest nearest-sample distance (largest empty circle) and return (point, radius)
-    ##1st approach to rmax
+    #pick the Voronoi vertex with the largest nearest-sample distance (largest empty circle) and return (point, radius)
+
+    #1st approach to rmax
     #radii = norm(points_2d, axis=1)
     #r = np.linalg.norm(points_2d, axis=1)
     #r_med = np.median(radii) if len(radii) else 0.0
@@ -92,13 +84,13 @@ def finding_largest_gap(points_2d, vor):
     r = np.linalg.norm(points_2d, axis=1)
     r_med = np.median(r)
     r_iqr = np.subtract(*np.percentile(r, [75, 25])) + 1e-12
-    Rmax = r_med + 1.5 * r_iqr  # robust instead of fixed 1.5×median
+    Rmax = r_med + 1.5 * r_iqr  #more robust instead of fixed 1.5×median
 
 
     max_radius = 0.0
     best_vertex_2d = None
 
-    # Only finite vertices within a reasonable radius
+    #only finite vertices within a reasonable radius
     for vertex in vor.vertices:
         if not np.all(np.isfinite(vertex)):
             continue
@@ -131,13 +123,13 @@ def save_ply(filename, points, ascii=True):
 
 
 def remove_sparse_outliers(points, k=20, factor=2.5):
-    ##compute the distance to nearest neighbous and if bigger than value delete
+    #compute the distance to nearest neighbous and if bigger than value delete
     pts = np.asarray(points)
     if len(pts) <= k + 1:
         return pts  # nothing to do
 
     tree = KDTree(pts)
-    # k+1 because the first neighbor is the point itself (distance 0)
+    #k+1 because the first neighbor is the point itself (distance 0)
     dists, _ = tree.query(pts, k=k+1)
     mean_dists = dists[:, 1:].mean(axis=1) #skip self distance
 

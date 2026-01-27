@@ -7,29 +7,28 @@ import upsampling as up
 import upsampling_helper_funcs as up_h
 from comparison import evaluate
 
+armadillo = Path("models/armadillo/Armadillo.ply")  # remove 90+%
 
-
-armadillo = Path("models/armadillo/Armadillo.ply") # remove 90+%
-
-buddha_full = Path("models/buddha/happy_vrip.ply") # remove 95+%
+buddha_full = Path("models/buddha/happy_vrip.ply")  # remove 95+%
 buddha_small = Path("models/buddha/happy_vrip_res2.ply")
 buddha_smaller = Path("models/buddha/happy_vrip_res3.ply")
-buddha_smallest = Path("models/buddha/happy_vrip_res4.ply") # maybe remove like 50% to add some randomness
+buddha_smallest = Path("models/buddha/happy_vrip_res4.ply")  # maybe remove like 50% to add some randomness
 
-bunny_full = Path("models/bunny/bun_zipper.ply") # remove 80+%
+bunny_full = Path("models/bunny/bun_zipper.ply")  # remove 80+%
 bunny_small = Path("models/bunny/bun_zipper_res2.ply")
 bunny_smaller = Path("models/bunny/bun_zipper_res3.ply")
-bunny_smallest = Path("models/bunny/bun_zipper_res4.ply") # good as is
+bunny_smallest = Path("models/bunny/bun_zipper_res4.ply")  # good as is
 
-dragon_full = Path("models/dragon/dragon_vrip.ply") # remove 95+%
+dragon_full = Path("models/dragon/dragon_vrip.ply")  # remove 95+%
 dragon_small = Path("models/dragon/dragon_vrip_res2.ply")
 dragon_smaller = Path("models/dragon/dragon_vrip_res3.ply")
-dragon_smallest = Path("models/dragon/dragon_vrip_res4.ply") # maybe remove like 50% to add some randomness
+dragon_smallest = Path("models/dragon/dragon_vrip_res4.ply")  # maybe remove like 50% to add some randomness
 
-lucy = "models/lucy/lucy.ply" # It's extremely large, remove like 99.9% points
+lucy = "models/lucy/lucy.ply"  # It's extremely large, remove like 99.9% points
 
 output_path = Path("output/")
 extension = ".ply"
+
 
 def load_and_reduce_point_cloud(cloud, percentage):
     num_points = len(cloud.points)
@@ -47,6 +46,7 @@ def visualize_point_cloud(cloud):
 
 
 def stats(name, pcd):
+    #print axis-aligned bounding box (AABB) summary statistics for a point cloud
     aabb = pcd.get_axis_aligned_bounding_box()
     mins = aabb.get_min_bound()
     maxs = aabb.get_max_bound()
@@ -62,26 +62,28 @@ def stats(name, pcd):
 
 
 def process_model(filename, model_name, percentage_to_remove, upscale):
+
+    #load ground truth point cloud from disk
     full_cloud = io.read_point_cloud(filename)
+
+    #create sparse cloud via random removal
     sparse = load_and_reduce_point_cloud(full_cloud, percentage_to_remove)
 
+    #ensure output directory exists and persist the sparse cloud for inspection
     os.makedirs(f"output/{model_name}", exist_ok=True)
     io.write_point_cloud(f"output/{model_name}/sparse_output.ply", sparse)
 
-    # Fill till same size
-    #points_to_add = len(full_cloud.points) - len(sparse.points)
-    # Upscale by (X + 1)
+    #fill till same size
+    #upscale by (X + 1)
     points_to_add = int(len(sparse.points) * (upscale - 1))
-    # Add X points
-    #points_to_add = 10000
 
-    #print(f"Sparse: {len(reduced_cloud.points)} points")
-    #up.upsampling_alg(reduced_cloud,str(output_path),str(filename.stem),extension)
-    #visualize_point_cloud(reduced_cloud)
+    #run the custom upsampler on the saved sparse cloud
     up.upsampling_self(model_name, filename=str(f"output/{model_name}/sparse_output.ply"), num_iterations=points_to_add)
+
+    #load dense result produced by upsampling_self
     dense = io.read_point_cloud(f"output/{model_name}/dense_output.ply")
-    
-    # Compare result to ground truth
+
+    #compare result to ground truth
     evaluate(full_cloud, dense, model_name)
 
     '''
