@@ -146,6 +146,7 @@ python process_and_save_all.py
 ```
 
 ### C) Run a deep-learning version
+
 We also provide a `Deep_Learning.ipynb` notebook, to run it -> just open it in the Google Collab environment.
 ---
 
