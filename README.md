@@ -40,7 +40,7 @@ pip install numpy scipy matplotlib plyfile open3d pyvista
 
 ---
 
-## 3) Setup (recommended)
+## 3) Setup 
 
 ### Create and activate a virtual environment
 
@@ -57,11 +57,19 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 ```
+> **Note:** If you get a PowerShell execution policy error, run:
+> ```powershell
+> Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+> ```
+
 
 ### Install dependencies
 ```bash
 pip install numpy scipy matplotlib plyfile open3d pyvista
 ```
+
+⚠️ **Important path note (batch runner):**  
+While you can just run the files directly (for example opening them in PyCharm IDE), we still recommend using virtual env in case you do not want to download dependencies globally
 
 ---
 
@@ -101,7 +109,7 @@ If your preprocessing output is nested by category (as above), either:
 - Modify `process_and_save_all.py` to walk subdirectories (e.g., `os.walk`).
 
 ### Option B: Use your own `.ply` point cloud
-Put a dense point cloud `.ply` anywhere (e.g., `models/custom/my_model.ply`).
+Put a dense point cloud `.ply` anywhere (e.g., `models/custom/my_model.ply`). Then in `pointcloud_to_surface_models.py` hardcode your cloud path.
 
 ---
 
@@ -137,6 +145,8 @@ Then run:
 python process_and_save_all.py
 ```
 
+### C) Run a deep-learning version
+We also provide a `Deep_Learning.ipynb` notebook, to run it -> just open it in the Google Collab environment.
 ---
 
 ## 6) Outputs
